@@ -1,0 +1,960 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>FeedLint — RSS &amp; Atom Feed Validator</title>
+  <meta name="description" content="Paste your RSS or Atom feed XML and instantly validate it against the spec. Find malformed tags, missing required elements, and podcast directory requirements. Free, browser-side, no signup.">
+  <meta name="keywords" content="rss feed validator, validate rss feed, atom feed validator, podcast rss checker, rss validator online, feed validator">
+  <meta property="og:title" content="FeedLint — RSS &amp; Atom Feed Validator">
+  <meta property="og:description" content="Paste your RSS or Atom feed XML and instantly validate it against the spec. Find malformed tags, missing required elements, and podcast requirements.">
+  <meta property="og:type" content="website">
+  <meta property="og:url" content="https://feedlint.radicchio.page">
+  <meta property="og:image" content="https://feedlint.radicchio.page/og.png">
+  <meta name="twitter:card" content="summary">
+  <meta name="twitter:title" content="FeedLint — RSS &amp; Atom Feed Validator">
+  <meta name="twitter:description" content="Paste your RSS or Atom feed XML and instantly validate it. Free, browser-side, no signup.">
+  <link rel="canonical" href="https://feedlint.radicchio.page">
+
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@graph": [
+      {
+        "@type": "WebApplication",
+        "name": "FeedLint",
+        "url": "https://feedlint.radicchio.page",
+        "description": "Free browser-side RSS and Atom feed validator. Paste your feed XML and instantly validate against the spec.",
+        "applicationCategory": "DeveloperApplication",
+        "operatingSystem": "Any",
+        "offers": {
+          "@type": "Offer",
+          "price": "0",
+          "priceCurrency": "USD"
+        }
+      },
+      {
+        "@type": "FAQPage",
+        "mainEntity": [
+          {
+            "@type": "Question",
+            "name": "Does FeedLint send my feed to a server?",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "No. FeedLint runs entirely in your browser. Your feed XML never leaves your device. This is especially important if your feed contains draft content or unpublished posts."
+            }
+          },
+          {
+            "@type": "Question",
+            "name": "What feed formats does FeedLint support?",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "FeedLint validates RSS 2.0 and Atom 1.0 feeds. It also checks Apple Podcasts requirements including the itunes namespace tags required for podcast submission."
+            }
+          },
+          {
+            "@type": "Question",
+            "name": "Why is my feed rejected by Apple Podcasts?",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "Apple Podcasts requires specific itunes namespace tags: itunes:author, itunes:image, itunes:explicit, and either itunes:category or itunes:subcategory. Your feed may also be failing if the enclosure element is missing, if dates are malformed, or if the feed title or description is missing."
+            }
+          },
+          {
+            "@type": "Question",
+            "name": "What is the difference between RSS 2.0 and Atom 1.0?",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "RSS 2.0 is the most widely supported format. It uses channel/item elements. Atom 1.0 is a newer, more strictly specified format using feed/entry elements. Most readers support both, but podcast directories generally require RSS 2.0."
+            }
+          },
+          {
+            "@type": "Question",
+            "name": "How do I get my RSS feed URL?",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "For WordPress: your RSS feed is usually at yourdomain.com/feed. For Ghost: yourdomain.com/rss. For Jekyll: yourdomain.com/feed.xml. For Squarespace: yourdomain.com/blog?format=rss. Once you have the URL, view-source the page or use curl to get the raw XML, then paste it here."
+            }
+          }
+        ]
+      }
+    ]
+  }
+  </script>
+
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg: #1a1814;
+      --surface: #211f1b;
+      --surface2: #272420;
+      --border: #332f28;
+      --text: #e0d8c8;
+      --muted: #8f8577;
+      --accent: #c8a84e;
+      --accent-dim: #9a7e3a;
+      --error: #c85050;
+      --warn: #c87830;
+      --ok: #5a9e6a;
+      --info: #4e88c8;
+      --font: 'Berkeley Mono', 'JetBrains Mono', 'Fira Mono', 'Consolas', monospace;
+    }
+
+    html { font-size: 15px; }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: var(--font);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+
+    a { color: var(--accent); text-decoration: none; }
+    a:hover { text-decoration: underline; }
+
+    /* ─── Header ─── */
+    header {
+      border-bottom: 1px solid var(--border);
+      padding: 1.2rem 1.5rem;
+      display: flex;
+      align-items: baseline;
+      gap: 1rem;
+    }
+
+    .logo {
+      font-size: 1.1rem;
+      font-weight: 700;
+      letter-spacing: -0.02em;
+      color: var(--text);
+    }
+
+    .logo span { color: var(--accent); }
+
+    .tagline {
+      color: var(--muted);
+      font-size: 0.82rem;
+    }
+
+    /* ─── Main ─── */
+    main {
+      flex: 1;
+      max-width: 900px;
+      width: 100%;
+      margin: 0 auto;
+      padding: 2rem 1.5rem;
+    }
+
+    .tool-section {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 1rem;
+      margin-bottom: 2rem;
+    }
+
+    @media (max-width: 700px) {
+      .tool-section { grid-template-columns: 1fr; }
+    }
+
+    .panel {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      overflow: hidden;
+    }
+
+    .panel-header {
+      padding: 0.6rem 1rem;
+      border-bottom: 1px solid var(--border);
+      font-size: 0.75rem;
+      color: var(--muted);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      background: var(--surface2);
+    }
+
+    textarea {
+      width: 100%;
+      height: 340px;
+      background: transparent;
+      border: none;
+      color: var(--text);
+      font-family: var(--font);
+      font-size: 0.8rem;
+      line-height: 1.5;
+      padding: 1rem;
+      resize: vertical;
+      outline: none;
+    }
+
+    textarea::placeholder { color: var(--muted); opacity: 0.6; }
+
+    /* ─── Controls ─── */
+    .controls {
+      display: flex;
+      gap: 0.75rem;
+      align-items: center;
+      margin-bottom: 1.5rem;
+      flex-wrap: wrap;
+    }
+
+    .btn {
+      padding: 0.55rem 1.3rem;
+      border: 1px solid var(--accent);
+      background: transparent;
+      color: var(--accent);
+      font-family: var(--font);
+      font-size: 0.85rem;
+      cursor: pointer;
+      border-radius: 4px;
+      letter-spacing: 0.02em;
+      transition: background 0.15s, color 0.15s;
+    }
+
+    .btn:hover { background: var(--accent); color: var(--bg); }
+    .btn:active { opacity: 0.8; }
+
+    .btn-ghost {
+      border-color: var(--border);
+      color: var(--muted);
+    }
+
+    .btn-ghost:hover { background: var(--surface2); color: var(--text); }
+
+    .privacy-note {
+      font-size: 0.75rem;
+      color: var(--muted);
+      margin-left: auto;
+    }
+
+    /* ─── Results ─── */
+    #results { display: none; margin-bottom: 2rem; }
+
+    .result-bar {
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      overflow: hidden;
+      margin-bottom: 1rem;
+    }
+
+    .result-summary {
+      padding: 0.75rem 1rem;
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      border-bottom: 1px solid var(--border);
+      background: var(--surface2);
+    }
+
+    .status-badge {
+      font-size: 0.72rem;
+      font-weight: 700;
+      padding: 0.2rem 0.6rem;
+      border-radius: 3px;
+      letter-spacing: 0.06em;
+    }
+
+    .badge-ok    { background: var(--ok);    color: var(--bg); }
+    .badge-warn  { background: var(--warn);  color: var(--bg); }
+    .badge-error { background: var(--error); color: #fff; }
+    .badge-info  { background: var(--info);  color: #fff; }
+
+    .result-meta { font-size: 0.8rem; color: var(--muted); }
+    .result-meta strong { color: var(--text); }
+
+    .issue-list {
+      list-style: none;
+      padding: 0;
+    }
+
+    .issue-item {
+      padding: 0.6rem 1rem;
+      border-bottom: 1px solid var(--border);
+      display: grid;
+      grid-template-columns: auto 1fr;
+      gap: 0.75rem;
+      align-items: start;
+      font-size: 0.8rem;
+      line-height: 1.5;
+    }
+
+    .issue-item:last-child { border-bottom: none; }
+
+    .issue-icon { font-size: 0.9rem; margin-top: 0.05rem; }
+    .issue-body { color: var(--text); }
+    .issue-path { font-size: 0.7rem; color: var(--muted); margin-top: 0.2rem; }
+    .issue-fix  { font-size: 0.72rem; color: var(--accent-dim); margin-top: 0.3rem; }
+
+    .no-issues {
+      padding: 1.2rem 1rem;
+      color: var(--ok);
+      font-size: 0.85rem;
+    }
+
+    /* ─── About ─── */
+    .about {
+      border-top: 1px solid var(--border);
+      padding-top: 2.5rem;
+      margin-top: 1.5rem;
+    }
+
+    .about h1 {
+      font-size: 1.05rem;
+      margin-bottom: 1rem;
+      color: var(--text);
+    }
+
+    .about h2 {
+      font-size: 0.9rem;
+      color: var(--accent);
+      margin: 1.5rem 0 0.6rem;
+    }
+
+    .about p, .about li {
+      font-size: 0.82rem;
+      color: var(--muted);
+      line-height: 1.7;
+      margin-bottom: 0.5rem;
+    }
+
+    .about ul { padding-left: 1.2rem; }
+    .about strong { color: var(--text); }
+
+    /* ─── FAQ ─── */
+    .faq-section { margin-top: 2rem; }
+
+    details {
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      margin-bottom: 0.5rem;
+      background: var(--surface);
+    }
+
+    summary {
+      padding: 0.75rem 1rem;
+      cursor: pointer;
+      font-size: 0.82rem;
+      color: var(--text);
+      list-style: none;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    summary::-webkit-details-marker { display: none; }
+    summary::after { content: '+'; color: var(--accent); font-size: 1rem; }
+    details[open] summary::after { content: '−'; }
+
+    details p {
+      padding: 0 1rem 0.75rem;
+      font-size: 0.8rem;
+      color: var(--muted);
+      line-height: 1.65;
+    }
+
+    /* ─── Footer ─── */
+    footer {
+      border-top: 1px solid var(--border);
+      padding: 1rem 1.5rem;
+      display: flex;
+      gap: 1.5rem;
+      flex-wrap: wrap;
+      align-items: center;
+      font-size: 0.75rem;
+      color: var(--muted);
+    }
+
+    footer a { color: var(--muted); }
+    footer a:hover { color: var(--text); }
+
+    /* ─── Example badge ─── */
+    .examples {
+      display: flex;
+      gap: 0.5rem;
+      flex-wrap: wrap;
+      margin-bottom: 1rem;
+    }
+
+    .example-btn {
+      font-size: 0.72rem;
+      padding: 0.25rem 0.65rem;
+      border: 1px solid var(--border);
+      border-radius: 3px;
+      color: var(--muted);
+      cursor: pointer;
+      background: transparent;
+      font-family: var(--font);
+      transition: border-color 0.12s, color 0.12s;
+    }
+
+    .example-btn:hover { border-color: var(--accent); color: var(--accent); }
+
+    .clear-btn { background: none; border: none; color: var(--muted); font-family: var(--font); font-size: 0.72rem; cursor: pointer; padding: 0; }
+    .clear-btn:hover { color: var(--error); }
+  </style>
+</head>
+<body>
+
+<header>
+  <div class="logo">Feed<span>Lint</span></div>
+  <div class="tagline">RSS &amp; Atom feed validator — runs in your browser, zero server</div>
+</header>
+
+<main>
+
+  <div class="examples">
+    <span style="font-size:0.72rem;color:var(--muted);margin-right:0.25rem;">Try an example:</span>
+    <button class="example-btn" onclick="loadExample('rss')">RSS 2.0 (blog)</button>
+    <button class="example-btn" onclick="loadExample('atom')">Atom 1.0 (blog)</button>
+    <button class="example-btn" onclick="loadExample('podcast')">Podcast feed</button>
+    <button class="example-btn" onclick="loadExample('broken')">Broken feed</button>
+  </div>
+
+  <div class="tool-section">
+    <div class="panel">
+      <div class="panel-header">
+        <span>feed.xml — paste your RSS or Atom XML here</span>
+        <button class="clear-btn" onclick="clearInput()">clear</button>
+      </div>
+      <textarea id="feedInput" placeholder="<?xml version=&quot;1.0&quot; encoding=&quot;UTF-8&quot;?>
+<rss version=&quot;2.0&quot;>
+  <channel>
+    <title>My Blog</title>
+    ...
+  </channel>
+</rss>
+
+Paste your feed XML and click Validate.
+Your feed never leaves this page."></textarea>
+    </div>
+
+    <div class="panel" id="resultsPanel" style="display:flex;flex-direction:column;">
+      <div class="panel-header">
+        <span>validation results</span>
+        <span id="resultCount" style="font-size:0.7rem;"></span>
+      </div>
+      <div id="resultsInner" style="padding:1rem;flex:1;overflow-y:auto;max-height:340px;">
+        <div style="color:var(--muted);font-size:0.8rem;line-height:1.7;">
+          Paste your feed XML on the left and click <strong style="color:var(--text)">Validate</strong> below.<br><br>
+          FeedLint checks:<br>
+          &bull; RSS 2.0 and Atom 1.0 spec compliance<br>
+          &bull; Required and recommended elements<br>
+          &bull; Apple Podcasts namespace requirements<br>
+          &bull; Date format correctness (RFC 822 / ISO 8601)<br>
+          &bull; Enclosure validity for podcast episodes<br>
+          &bull; Encoding and XML well-formedness
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="controls">
+    <button class="btn" onclick="validateFeed()">Validate feed</button>
+    <button class="btn btn-ghost" onclick="clearAll()">Clear</button>
+    <span class="privacy-note">🔒 Your XML never leaves your device</span>
+  </div>
+
+  <!-- ─── About ─── -->
+  <div class="about">
+    <h1>Free RSS &amp; Atom Feed Validator</h1>
+
+    <p>
+      FeedLint is a free, browser-side validator for RSS 2.0 and Atom 1.0 feeds.
+      Paste your feed's raw XML and FeedLint instantly checks it against the spec —
+      finding malformed tags, missing required elements, invalid dates, and common
+      podcast submission errors. <strong>Your feed never leaves your device.</strong>
+    </p>
+
+    <p>
+      Unlike older server-side validators, FeedLint runs entirely in JavaScript using
+      the browser's built-in XML parser. There's no server round-trip, no rate limit,
+      and no risk of your unpublished content being logged or indexed by a third party.
+    </p>
+
+    <h2>What FeedLint validates</h2>
+    <ul>
+      <li><strong>RSS 2.0 compliance</strong> — channel title, link, description; item guid, pubDate, enclosure format</li>
+      <li><strong>Atom 1.0 compliance</strong> — feed id, title, updated; entry id, title, updated, link</li>
+      <li><strong>Apple Podcasts requirements</strong> — itunes:author, itunes:image, itunes:explicit, itunes:category; episode enclosures with type and length</li>
+      <li><strong>Date formats</strong> — RFC 822 for RSS, ISO 8601 for Atom; catches malformed dates that confuse feed readers</li>
+      <li><strong>XML well-formedness</strong> — unclosed tags, bad entities, encoding mismatches, invalid characters</li>
+      <li><strong>Recommended fields</strong> — flags missing-but-useful elements with warnings rather than errors</li>
+    </ul>
+
+    <h2>How to get your feed XML</h2>
+    <p>
+      Find your feed URL (usually <code style="color:var(--accent)">/feed</code>, <code style="color:var(--accent)">/rss</code>,
+      or <code style="color:var(--accent)">/feed.xml</code>). Open it in a browser tab.
+      Use View Source (<kbd style="color:var(--text);border:1px solid var(--border);padding:0.1rem 0.3rem;border-radius:2px">Ctrl+U</kbd>) to see the raw XML.
+      Select all, copy, and paste here. Or use curl:
+    </p>
+    <pre style="background:var(--surface);border:1px solid var(--border);padding:0.75rem 1rem;border-radius:4px;font-size:0.78rem;color:var(--accent);overflow-x:auto;margin:0.5rem 0;">curl https://yourblog.com/feed.xml | pbcopy</pre>
+
+    <div class="faq-section">
+      <h2 style="margin-bottom:0.75rem;">Frequently asked questions</h2>
+
+      <details>
+        <summary>Does FeedLint send my feed to a server?</summary>
+        <p>No. FeedLint runs entirely in your browser using JavaScript's built-in DOMParser. Your feed XML never leaves your device. This is especially important if your feed contains draft posts, internal content, or anything not yet published publicly.</p>
+      </details>
+
+      <details>
+        <summary>Why is my podcast feed being rejected by Apple Podcasts?</summary>
+        <p>Apple Podcasts requires specific tags in the iTunes namespace: <code>&lt;itunes:author&gt;</code>, <code>&lt;itunes:image&gt;</code>, <code>&lt;itunes:explicit&gt;</code>, and <code>&lt;itunes:category&gt;</code>. Each episode item must also have an <code>&lt;enclosure&gt;</code> element with a valid URL, MIME type, and file length. FeedLint checks all of these and shows you exactly which are missing or malformed.</p>
+      </details>
+
+      <details>
+        <summary>What feed formats does FeedLint support?</summary>
+        <p>FeedLint validates RSS 2.0 (the most common format, used by WordPress, Ghost, and most podcast hosts) and Atom 1.0 (used by Blogger, some static site generators, and the GitHub API). RSS 2.0 is required for podcast directories; Atom 1.0 is common for blog subscriptions.</p>
+      </details>
+
+      <details>
+        <summary>My feed shows valid but subscribers aren't receiving updates — why?</summary>
+        <p>A structurally valid feed can still have issues that prevent readers from showing new items. Common causes: the <code>&lt;pubDate&gt;</code> on new items is in the future or uses a timezone readers don't recognize; the <code>&lt;guid&gt;</code> element is missing or reused across items; the feed URL changed without a redirect. Validate to rule out structural errors first, then check your publishing workflow.</p>
+      </details>
+
+      <details>
+        <summary>What is the difference between RSS 2.0 and Atom 1.0?</summary>
+        <p>RSS 2.0 (Really Simple Syndication) is the oldest and most supported format. It's required for all major podcast directories. Atom 1.0 is a newer, more precisely specified format with better support for internationalization and author metadata. Both work in feed readers, but if you're podcasting, use RSS 2.0.</p>
+      </details>
+
+      <details>
+        <summary>How do I find my feed URL?</summary>
+        <p>WordPress: <code>yourdomain.com/feed</code> &nbsp;·&nbsp; Ghost: <code>yourdomain.com/rss</code> &nbsp;·&nbsp; Jekyll: <code>yourdomain.com/feed.xml</code> &nbsp;·&nbsp; Hugo: <code>yourdomain.com/index.xml</code> &nbsp;·&nbsp; Substack: <code>yoursubstack.substack.com/feed</code> &nbsp;·&nbsp; Squarespace: <code>yourdomain.com/blog?format=rss</code></p>
+      </details>
+    </div>
+
+    <h2 style="margin-top:1.5rem;">Related tools</h2>
+    <p>
+      <a href="https://envlint.com">EnvLint</a> — validate your .env files, find missing variables and exposed secrets &nbsp;·&nbsp;
+      <a href="https://cronfig.radicchio.page">Cronfig</a> — test cron expressions and see next run times in plain English &nbsp;·&nbsp;
+      <a href="https://linkscrub.radicchio.page">LinkScrub</a> — strip UTM parameters and tracking garbage from URLs
+    </p>
+  </div>
+
+</main>
+
+<footer>
+  <span>FeedLint — free RSS &amp; Atom validator</span>
+  <a href="https://bitterdesk.com">Support</a>
+  <a href="https://bitterdesk.com/privacy">Privacy</a>
+  <a href="https://bitterdesk.com/terms">Terms</a>
+  <span style="margin-left:auto;">Your feed never leaves your browser</span>
+</footer>
+
+<script>
+// ─── Examples ───────────────────────────────────────────────────────────────
+
+const EXAMPLES = {
+  rss: `<?xml version="1.0" encoding="UTF-8"?>
+<rss version="2.0">
+  <channel>
+    <title>My Dev Blog</title>
+    <link>https://example.com</link>
+    <description>Writing about code and building things on the internet.</description>
+    <language>en-us</language>
+    <lastBuildDate>Wed, 11 Mar 2026 18:00:00 +0000</lastBuildDate>
+    <item>
+      <title>How I Validated My RSS Feed in 30 Seconds</title>
+      <link>https://example.com/posts/rss-validation</link>
+      <description>A short post about feed validation tools.</description>
+      <pubDate>Wed, 11 Mar 2026 12:00:00 +0000</pubDate>
+      <guid isPermaLink="true">https://example.com/posts/rss-validation</guid>
+    </item>
+    <item>
+      <title>Building Static Sites That Last</title>
+      <link>https://example.com/posts/static-sites</link>
+      <description>Static sites age well. Here is why.</description>
+      <pubDate>Mon, 09 Mar 2026 09:00:00 +0000</pubDate>
+      <guid isPermaLink="true">https://example.com/posts/static-sites</guid>
+    </item>
+  </channel>
+</rss>`,
+
+  atom: `<?xml version="1.0" encoding="UTF-8"?>
+<feed xmlns="http://www.w3.org/2005/Atom">
+  <title>My Dev Blog</title>
+  <link href="https://example.com"/>
+  <link rel="self" href="https://example.com/feed.xml"/>
+  <id>https://example.com/</id>
+  <updated>2026-03-11T18:00:00Z</updated>
+  <author>
+    <name>Dev Author</name>
+    <email>author@example.com</email>
+  </author>
+  <entry>
+    <title>How I Validated My Atom Feed</title>
+    <link href="https://example.com/posts/atom-feed"/>
+    <id>https://example.com/posts/atom-feed</id>
+    <updated>2026-03-11T12:00:00Z</updated>
+    <summary>A short post about Atom feed validation.</summary>
+  </entry>
+</feed>`,
+
+  podcast: `<?xml version="1.0" encoding="UTF-8"?>
+<rss version="2.0"
+  xmlns:itunes="http://www.itunes.com/dtds/podcast-1.0.dtd"
+  xmlns:content="http://purl.org/rss/1.0/modules/content/">
+  <channel>
+    <title>The Builder Podcast</title>
+    <link>https://example.com/podcast</link>
+    <description>Conversations with people building things on the internet.</description>
+    <language>en-us</language>
+    <itunes:author>Jane Builder</itunes:author>
+    <itunes:image href="https://example.com/podcast-cover.jpg"/>
+    <itunes:category text="Technology"/>
+    <itunes:explicit>false</itunes:explicit>
+    <item>
+      <title>Episode 12: Shipping Faster</title>
+      <description>How to ship software faster without cutting corners.</description>
+      <pubDate>Wed, 11 Mar 2026 08:00:00 +0000</pubDate>
+      <guid isPermaLink="false">ep-12-shipping-faster</guid>
+      <enclosure url="https://example.com/episodes/ep12.mp3" type="audio/mpeg" length="45320000"/>
+      <itunes:duration>1250</itunes:duration>
+      <itunes:explicit>false</itunes:explicit>
+    </item>
+  </channel>
+</rss>`,
+
+  broken: `<?xml version="1.0" encoding="UTF-8"?>
+<rss version="2.0">
+  <channel>
+    <title>Broken Blog Feed</title>
+    <item>
+      <title>My Latest Post</title>
+      <link>https://example.com/post</link>
+      <pubDate>March 11th 2026</pubDate>
+    </item>
+    <item>
+      <description>Post with no title or guid</description>
+      <pubDate>2026-03-10</pubDate>
+    </item>
+  </channel>
+</rss>`
+};
+
+function loadExample(key) {
+  document.getElementById('feedInput').value = EXAMPLES[key];
+  validateFeed();
+}
+
+function clearInput() {
+  document.getElementById('feedInput').value = '';
+}
+
+function clearAll() {
+  document.getElementById('feedInput').value = '';
+  resetResults();
+}
+
+function resetResults() {
+  document.getElementById('resultsInner').innerHTML = `
+    <div style="color:var(--muted);font-size:0.8rem;line-height:1.7;">
+      Paste your feed XML on the left and click <strong style="color:var(--text)">Validate</strong> below.<br><br>
+      FeedLint checks:<br>
+      &bull; RSS 2.0 and Atom 1.0 spec compliance<br>
+      &bull; Required and recommended elements<br>
+      &bull; Apple Podcasts namespace requirements<br>
+      &bull; Date format correctness (RFC 822 / ISO 8601)<br>
+      &bull; Enclosure validity for podcast episodes<br>
+      &bull; Encoding and XML well-formedness
+    </div>`;
+  document.getElementById('resultCount').textContent = '';
+}
+
+// ─── Validation Engine ───────────────────────────────────────────────────────
+
+function validateFeed() {
+  const raw = document.getElementById('feedInput').value.trim();
+  if (!raw) {
+    showError('No input — paste your feed XML on the left.');
+    return;
+  }
+
+  const issues = [];
+
+  // ── 1. XML parse ──────────────────────────────────────────────────────────
+  let doc;
+  try {
+    const parser = new DOMParser();
+    doc = parser.parseFromString(raw, 'application/xml');
+    const parseErr = doc.querySelector('parsererror');
+    if (parseErr) {
+      const errText = parseErr.textContent.split('\n')[0].trim();
+      issues.push({ level: 'error', msg: 'XML is not well-formed — the feed cannot be parsed.', detail: errText, fix: 'Check for unclosed tags, unescaped < > & characters, or invalid UTF-8 sequences.' });
+      renderResults(issues, 'XML parse error', null);
+      return;
+    }
+  } catch (e) {
+    issues.push({ level: 'error', msg: 'Failed to parse XML.', detail: e.message, fix: 'Ensure the input is valid XML.' });
+    renderResults(issues, 'XML parse error', null);
+    return;
+  }
+
+  const root = doc.documentElement;
+  const rootTag = root.tagName.toLowerCase();
+
+  // ── 2. Detect format ──────────────────────────────────────────────────────
+  let format = null;
+  if (rootTag === 'rss') {
+    const ver = root.getAttribute('version');
+    if (!ver) issues.push({ level: 'warn', msg: 'RSS feed is missing version attribute.', path: '<rss>', fix: 'Add version="2.0" to the <rss> element.' });
+    else if (ver !== '2.0') issues.push({ level: 'warn', msg: `RSS version is "${ver}" — only 2.0 is widely supported.`, path: '<rss version="' + ver + '">' });
+    format = 'rss2';
+  } else if (rootTag === 'feed') {
+    const ns = root.getAttribute('xmlns') || root.namespaceURI;
+    if (!ns || !ns.includes('atom')) issues.push({ level: 'warn', msg: 'Feed looks like Atom but is missing the Atom namespace declaration.', path: '<feed>', fix: 'Add xmlns="http://www.w3.org/2005/Atom" to the <feed> element.' });
+    format = 'atom';
+  } else {
+    issues.push({ level: 'error', msg: `Unknown root element <${root.tagName}>. Expected <rss> or <feed>.`, fix: 'RSS 2.0 feeds start with <rss version="2.0"><channel>. Atom 1.0 feeds start with <feed xmlns="http://www.w3.org/2005/Atom">.' });
+    renderResults(issues, 'Unknown format', null);
+    return;
+  }
+
+  // ── 3. Format-specific validation ─────────────────────────────────────────
+  if (format === 'rss2') validateRSS2(doc, root, issues);
+  else validateAtom(doc, root, issues);
+
+  const label = format === 'rss2' ? 'RSS 2.0' : 'Atom 1.0';
+  renderResults(issues, label, format);
+}
+
+function g(parent, tagName) {
+  // get first element matching tagName (case-insensitive, ignores namespace prefix for simple cases)
+  const direct = parent.getElementsByTagName(tagName);
+  return direct.length ? direct[0] : null;
+}
+
+function txt(el) { return el ? (el.textContent || '').trim() : ''; }
+
+// ─── RSS 2.0 ─────────────────────────────────────────────────────────────────
+
+function validateRSS2(doc, root, issues) {
+  const channel = g(root, 'channel');
+  if (!channel) {
+    issues.push({ level: 'error', msg: 'Missing <channel> element.', fix: 'Wrap your feed content in a <channel> element inside <rss>.' });
+    return;
+  }
+
+  // Required channel fields
+  const reqChannel = ['title', 'link', 'description'];
+  for (const f of reqChannel) {
+    const el = g(channel, f);
+    if (!el || !txt(el)) issues.push({ level: 'error', msg: `Channel is missing required <${f}> element.`, path: 'channel > ' + f, fix: `Add <${f}>your value</${f}> inside <channel>.` });
+  }
+
+  // Recommended channel fields
+  const recChannel = [['language', 'Helps feed readers display content correctly (e.g. en-us, fr-fr).'], ['lastBuildDate', 'Tells readers when the feed was last modified.']];
+  for (const [f, hint] of recChannel) {
+    const el = g(channel, f);
+    if (!el || !txt(el)) issues.push({ level: 'info', msg: `Channel is missing recommended <${f}>.`, path: 'channel > ' + f, fix: hint });
+  }
+
+  // Items
+  const items = channel.getElementsByTagName('item');
+  if (items.length === 0) issues.push({ level: 'warn', msg: 'Feed has no <item> elements. An empty feed provides no value to subscribers.', path: 'channel' });
+
+  // Podcast detection
+  const itunesNs = root.getAttribute('xmlns:itunes') || '';
+  const isPodcast = itunesNs.includes('itunes') || doc.getElementsByTagNameNS('http://www.itunes.com/dtds/podcast-1.0.dtd', 'author').length > 0
+    || doc.querySelector('[tagName^="itunes"]') || raw_has_itunes(doc);
+
+  if (isPodcast) validatePodcast(doc, channel, issues);
+
+  // Item-level checks
+  let itemIdx = 0;
+  for (const item of items) {
+    itemIdx++;
+    const prefix = `item[${itemIdx}]`;
+
+    const title = g(item, 'title');
+    const desc  = g(item, 'description');
+    if ((!title || !txt(title)) && (!desc || !txt(desc))) {
+      issues.push({ level: 'error', msg: `${prefix} must have either <title> or <description>.`, path: prefix, fix: 'Add at least a <title> element to each item.' });
+    }
+
+    const guid = g(item, 'guid');
+    if (!guid || !txt(guid)) issues.push({ level: 'warn', msg: `${prefix} is missing <guid>. Feed readers use guid to deduplicate items.`, path: prefix + ' > guid', fix: 'Add a <guid isPermaLink="true">https://...</guid> to each item.' });
+
+    const pubDate = g(item, 'pubDate');
+    if (pubDate && txt(pubDate)) {
+      const d = new Date(txt(pubDate));
+      if (isNaN(d.getTime())) issues.push({ level: 'error', msg: `${prefix} has an invalid <pubDate>: "${txt(pubDate)}".`, path: prefix + ' > pubDate', fix: 'Use RFC 822 format: Wed, 11 Mar 2026 12:00:00 +0000' });
+    } else {
+      issues.push({ level: 'info', msg: `${prefix} is missing <pubDate>. Readers may not order items correctly.`, path: prefix + ' > pubDate' });
+    }
+
+    // Podcast episode enclosure
+    if (isPodcast) {
+      const enc = g(item, 'enclosure');
+      if (!enc) {
+        issues.push({ level: 'warn', msg: `${prefix} is missing <enclosure>. Podcast directories require an enclosure for each episode.`, path: prefix + ' > enclosure', fix: 'Add <enclosure url="..." type="audio/mpeg" length="12345678"/>' });
+      } else {
+        if (!enc.getAttribute('url')) issues.push({ level: 'error', msg: `${prefix} enclosure is missing the url attribute.`, path: prefix + ' > enclosure' });
+        if (!enc.getAttribute('type')) issues.push({ level: 'error', msg: `${prefix} enclosure is missing the type attribute (e.g. audio/mpeg).`, path: prefix + ' > enclosure' });
+        if (!enc.getAttribute('length')) issues.push({ level: 'warn', msg: `${prefix} enclosure is missing the length attribute (file size in bytes).`, path: prefix + ' > enclosure' });
+      }
+    }
+  }
+}
+
+function raw_has_itunes(doc) {
+  const allEls = doc.getElementsByTagName('*');
+  for (let i = 0; i < allEls.length; i++) {
+    if (allEls[i].tagName.toLowerCase().startsWith('itunes:')) return true;
+  }
+  return false;
+}
+
+function validatePodcast(doc, channel, issues) {
+  const required = [
+    ['itunes:author',   'Author name as it appears in podcast directories.'],
+    ['itunes:image',    'Cover art (minimum 1400x1400px, max 3000x3000px, JPEG or PNG).'],
+    ['itunes:explicit', '"true" or "false" — required by Apple Podcasts.'],
+    ['itunes:category', 'Primary category (e.g. <itunes:category text="Technology"/>).'],
+  ];
+
+  for (const [tag, fix] of required) {
+    const el = channel.getElementsByTagName(tag)[0] || doc.getElementsByTagName(tag)[0];
+    if (!el) {
+      issues.push({ level: 'error', msg: `Podcast feed is missing required <${tag}>.`, path: 'channel > ' + tag, fix });
+    }
+  }
+
+  // itunes:image should have href attr
+  const img = channel.getElementsByTagName('itunes:image')[0] || doc.getElementsByTagName('itunes:image')[0];
+  if (img && !img.getAttribute('href')) {
+    issues.push({ level: 'error', msg: 'itunes:image element must have an href attribute pointing to your cover art URL.', path: 'channel > itunes:image', fix: '<itunes:image href="https://example.com/cover.jpg"/>' });
+  }
+
+  // Verify namespace declaration
+  const rssEl = doc.documentElement;
+  const itunesNs = rssEl.getAttribute('xmlns:itunes');
+  if (!itunesNs || !itunesNs.includes('itunes')) {
+    issues.push({ level: 'warn', msg: 'iTunes namespace not declared on root <rss> element.', path: '<rss>', fix: 'Add xmlns:itunes="http://www.itunes.com/dtds/podcast-1.0.dtd" to the <rss> opening tag.' });
+  }
+}
+
+// ─── Atom 1.0 ────────────────────────────────────────────────────────────────
+
+function validateAtom(doc, root, issues) {
+  // Required feed-level
+  const reqFeed = ['title', 'id', 'updated'];
+  for (const f of reqFeed) {
+    const el = root.getElementsByTagName(f)[0];
+    if (!el || !txt(el)) issues.push({ level: 'error', msg: `Feed is missing required <${f}> element.`, path: 'feed > ' + f, fix: `Add <${f}>value</${f}> inside <feed>.` });
+  }
+
+  // Self link
+  const links = root.getElementsByTagName('link');
+  let hasSelf = false;
+  for (const l of links) { if (l.getAttribute('rel') === 'self') { hasSelf = true; break; } }
+  if (!hasSelf) issues.push({ level: 'info', msg: 'Feed is missing a self link (rel="self"). This helps readers find the canonical feed URL.', path: 'feed > link[rel=self]', fix: '<link rel="self" href="https://example.com/feed.xml"/>' });
+
+  // author at feed level
+  const feedAuthor = root.getElementsByTagName('author')[0];
+  if (!feedAuthor) issues.push({ level: 'warn', msg: 'Feed has no <author> element. Each entry should have an author if none is declared at feed level.', path: 'feed > author' });
+
+  // updated format
+  const updEl = root.getElementsByTagName('updated')[0];
+  if (updEl && txt(updEl)) {
+    const d = new Date(txt(updEl));
+    if (isNaN(d.getTime())) issues.push({ level: 'error', msg: `Feed <updated> has an invalid date: "${txt(updEl)}".`, path: 'feed > updated', fix: 'Use ISO 8601 format: 2026-03-11T18:00:00Z' });
+  }
+
+  // Entries
+  const entries = root.getElementsByTagName('entry');
+  if (entries.length === 0) issues.push({ level: 'warn', msg: 'Feed has no <entry> elements. An empty feed provides no value to subscribers.', path: 'feed' });
+
+  let entryIdx = 0;
+  for (const entry of entries) {
+    entryIdx++;
+    const prefix = `entry[${entryIdx}]`;
+
+    const reqEntry = ['title', 'id', 'updated'];
+    for (const f of reqEntry) {
+      const el = entry.getElementsByTagName(f)[0];
+      if (!el || !txt(el)) issues.push({ level: 'error', msg: `${prefix} is missing required <${f}>.`, path: prefix + ' > ' + f, fix: `Add <${f}> to each entry.` });
+    }
+
+    // updated format
+    const entryUpd = entry.getElementsByTagName('updated')[0];
+    if (entryUpd && txt(entryUpd)) {
+      const d = new Date(txt(entryUpd));
+      if (isNaN(d.getTime())) issues.push({ level: 'error', msg: `${prefix} <updated> has an invalid date: "${txt(entryUpd)}".`, path: prefix + ' > updated', fix: 'Use ISO 8601: 2026-03-11T12:00:00Z' });
+    }
+
+    // link
+    const entryLink = entry.getElementsByTagName('link')[0];
+    if (!entryLink || !entryLink.getAttribute('href')) issues.push({ level: 'warn', msg: `${prefix} is missing a <link href="..."> element. Readers need a link to the full post.`, path: prefix + ' > link', fix: '<link href="https://example.com/post"/>' });
+
+    // content or summary
+    const content = entry.getElementsByTagName('content')[0];
+    const summary = entry.getElementsByTagName('summary')[0];
+    if (!content && !summary) issues.push({ level: 'info', msg: `${prefix} has neither <content> nor <summary>. Readers may show a blank preview.`, path: prefix, fix: 'Add <summary>A brief description of the post.</summary>' });
+  }
+}
+
+// ─── Render ───────────────────────────────────────────────────────────────────
+
+const ICONS = { error: '✗', warn: '⚠', info: '·', ok: '✓' };
+const COLORS = { error: 'var(--error)', warn: 'var(--warn)', info: 'var(--info)', ok: 'var(--ok)' };
+
+function renderResults(issues, label, format) {
+  const errors   = issues.filter(i => i.level === 'error');
+  const warnings = issues.filter(i => i.level === 'warn');
+  const infos    = issues.filter(i => i.level === 'info');
+
+  let summaryLevel = 'ok';
+  let summaryText = 'Feed is valid';
+  if (errors.length)   { summaryLevel = 'error'; summaryText = `${errors.length} error${errors.length > 1 ? 's' : ''} found`; }
+  else if (warnings.length) { summaryLevel = 'warn'; summaryText = `Valid with ${warnings.length} warning${warnings.length > 1 ? 's' : ''}`; }
+  else if (infos.length) { summaryText = 'Valid — ' + infos.length + ' suggestion' + (infos.length > 1 ? 's' : ''); }
+
+  const total = issues.length;
+  document.getElementById('resultCount').textContent = total > 0 ? `${total} issue${total > 1 ? 's' : ''}` : 'all good';
+
+  let html = `
+    <div class="result-bar">
+      <div class="result-summary">
+        <span class="status-badge badge-${summaryLevel}">${summaryLevel.toUpperCase()}</span>
+        <span class="result-meta"><strong>${label}</strong> — ${summaryText}</span>
+      </div>`;
+
+  if (issues.length === 0) {
+    html += `<div class="no-issues">✓ No issues found. Your feed looks good!</div>`;
+  } else {
+    html += `<ul class="issue-list">`;
+    for (const iss of issues) {
+      html += `<li class="issue-item">
+        <span class="issue-icon" style="color:${COLORS[iss.level]}">${ICONS[iss.level]}</span>
+        <div class="issue-body">
+          ${escHtml(iss.msg)}
+          ${iss.detail ? `<div class="issue-path">${escHtml(iss.detail)}</div>` : ''}
+          ${iss.path   ? `<div class="issue-path">Path: <code>${escHtml(iss.path)}</code></div>` : ''}
+          ${iss.fix    ? `<div class="issue-fix">Fix: ${escHtml(iss.fix)}</div>` : ''}
+        </div>
+      </li>`;
+    }
+    html += `</ul>`;
+  }
+
+  html += `</div>`;
+  document.getElementById('resultsInner').innerHTML = html;
+}
+
+function showError(msg) {
+  document.getElementById('resultsInner').innerHTML = `<div style="color:var(--error);font-size:0.82rem;padding:0.5rem 0;">${msg}</div>`;
+  document.getElementById('resultCount').textContent = '';
+}
+
+function escHtml(s) {
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+</script>
+
+</body>
+</html>

@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://feedlint.radicchio.page/sitemap.xml
