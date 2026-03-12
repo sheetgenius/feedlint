@@ -55,4 +55,4 @@ Future MCP tool: free tier (10 validations/day), paid ($5/mo, unlimited).
 
 - Live at: https://feedlint.radicchio.page
 - GitHub: https://github.com/ruemic/feedlint
-- Support: https://bitterdesk.com
+- Support: https://bitterdesk.com/s/feedlint/
