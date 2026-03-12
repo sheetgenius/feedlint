@@ -71,10 +71,18 @@
           },
           {
             "@type": "Question",
-            "name": "How do I get my RSS feed URL?",
+            "name": "My feed shows valid but subscribers aren't receiving updates — why?",
             "acceptedAnswer": {
               "@type": "Answer",
-              "text": "For WordPress: your RSS feed is usually at yourdomain.com/feed. For Ghost: yourdomain.com/rss. For Jekyll: yourdomain.com/feed.xml. For Squarespace: yourdomain.com/blog?format=rss. Once you have the URL, view-source the page or use curl to get the raw XML, then paste it here."
+              "text": "A structurally valid feed can still have issues that prevent readers from showing new items. Common causes: the pubDate on new items is in the future or uses a timezone readers don't recognize; the guid element is missing or reused across items; the feed URL changed without a redirect. Validate to rule out structural errors first, then check your publishing workflow."
+            }
+          },
+          {
+            "@type": "Question",
+            "name": "How do I find my feed URL?",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "WordPress: yourdomain.com/feed · Ghost: yourdomain.com/rss · Jekyll: yourdomain.com/feed.xml · Hugo: yourdomain.com/index.xml · Substack: yoursubstack.substack.com/feed · Squarespace: yourdomain.com/blog?format=rss"
             }
           }
         ]
