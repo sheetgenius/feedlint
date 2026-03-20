@@ -1,0 +1,13 @@
+{
+  "api_base": "https://radicchio.fly.dev",
+  "files": [
+    "index.html",
+    "og.png",
+    "og.svg",
+    "robots.txt",
+    "sitemap.xml"
+  ],
+  "hostname": "feedlint.radicchio.page",
+  "site_id": 13,
+  "site_name": "FeedLint"
+}
