@@ -1,5 +1,12 @@
 # Changelog
 
+## 2026-04-01
+
+### Improved
+- Updated deploy pipeline to use repo-owned Radicchio workflow and deploy verification scripts
+
+
+
 ## 2026-03-22
 
 ### Improved
