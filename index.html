@@ -42,59 +42,7 @@
           "price": "0",
           "priceCurrency": "USD"
         }
-      },
-      {
-        "@type": "FAQPage",
-        "mainEntity": [
-          {
-            "@type": "Question",
-            "name": "Does FeedLint send my feed to a server?",
-            "acceptedAnswer": {
-              "@type": "Answer",
-              "text": "No. FeedLint runs entirely in your browser. Your feed XML never leaves your device. This is especially important if your feed contains draft content or unpublished posts."
-            }
-          },
-          {
-            "@type": "Question",
-            "name": "What feed formats does FeedLint support?",
-            "acceptedAnswer": {
-              "@type": "Answer",
-              "text": "FeedLint validates RSS 2.0 and Atom 1.0 feeds. It also checks Apple Podcasts requirements including the itunes namespace tags required for podcast submission."
-            }
-          },
-          {
-            "@type": "Question",
-            "name": "Why is my podcast feed being rejected by Apple Podcasts?",
-            "acceptedAnswer": {
-              "@type": "Answer",
-              "text": "Apple Podcasts requires specific itunes namespace tags: itunes:author, itunes:image, itunes:explicit, and either itunes:category or itunes:subcategory. Your feed may also be failing if the enclosure element is missing, if dates are malformed, or if the feed title or description is missing."
-            }
-          },
-          {
-            "@type": "Question",
-            "name": "What is the difference between RSS 2.0 and Atom 1.0?",
-            "acceptedAnswer": {
-              "@type": "Answer",
-              "text": "RSS 2.0 is the most widely supported format. It uses channel/item elements. Atom 1.0 is a newer, more strictly specified format using feed/entry elements. Most readers support both, but podcast directories generally require RSS 2.0."
-            }
-          },
-          {
-            "@type": "Question",
-            "name": "My feed shows valid but subscribers aren't receiving updates — why?",
-            "acceptedAnswer": {
-              "@type": "Answer",
-              "text": "A structurally valid feed can still have issues that prevent readers from showing new items. Common causes: the pubDate on new items is in the future or uses a timezone readers don't recognize; the guid element is missing or reused across items; the feed URL changed without a redirect. Validate to rule out structural errors first, then check your publishing workflow."
-            }
-          },
-          {
-            "@type": "Question",
-            "name": "How do I find my feed URL?",
-            "acceptedAnswer": {
-              "@type": "Answer",
-              "text": "WordPress: yourdomain.com/feed · Ghost: yourdomain.com/rss · Jekyll: yourdomain.com/feed.xml · Hugo: yourdomain.com/index.xml · Substack: yoursubstack.substack.com/feed · Squarespace: yourdomain.com/blog?format=rss"
-            }
-          }
-        ]
+      }]
       }
     ]
   }
